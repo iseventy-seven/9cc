@@ -22,6 +22,8 @@ struct Token {
 	char *str;
 };
 
+char *user_input;
+
 Token *token;
 
 void error(char *fmt, ...) {
@@ -31,6 +33,26 @@ void error(char *fmt, ...) {
 	va_start(ap, fmt);
 	
 	vfprintf(stderr, fmt, ap);
+	
+	fprintf(stderr, "\n");
+
+	exit(1);
+}
+
+void error_at(char *loc, char *fmt, ...) {
+
+	va_list ap;
+
+	va_start(ap, fmt);
+
+	int pos = loc - user_input;
+
+	fprintf(stderr, "%s\n", user_input);
+	fprintf(stderr, "%*s", pos, " ");
+	fprintf(stderr, "^ ");
+	
+	vfprintf(stderr, fmt, ap);
+
 	fprintf(stderr, "\n");
 
 	exit(1);
@@ -50,7 +72,7 @@ bool consume(char op) {
 void expect(char op) {
 
 	if (token->kind != TK_RESERVED || token->str[0] != op) {
-		error("Not '%c'", op);
+		error_at(token->str, "expected '%c'", op);
 	}
 
 	token = token->next;
@@ -59,7 +81,7 @@ void expect(char op) {
 int expect_number() {
 
 	if (token->kind != TK_NUM) {
-		error("Not a number");
+		error_at(token->str, "excepted a number");
 	}
 
 	int val = token->val;
@@ -86,7 +108,9 @@ Token *new_token(TokenKind kind, Token *cur, char *str) {
 	return tok;
 }
 
-Token *tokenize(char *p) {
+Token *tokenize() {
+	
+	char *p = user_input;
 
 	Token head;
 
@@ -111,7 +135,7 @@ Token *tokenize(char *p) {
 			continue;
 		}
 
-		error("Cannot tokenize");
+		error_at(p, "excepted a number");
 	}
 
 	new_token(TK_EOF, cur, p);
@@ -122,11 +146,12 @@ Token *tokenize(char *p) {
 int main(int argc, char **argv) {
 
 	if (argc != 2) {
-		fprintf(stderr, "Incorrect number of arguments\n");
+		error("%s: invalid number of arguments", argv[0]);
 		return 1;
 	}
 
-	token = tokenize(argv[1]);
+	user_input = argv[1];
+	token = tokenize();
 
 	printf(".intel_syntax noprefix\n");
 	printf(".globl main\n");
